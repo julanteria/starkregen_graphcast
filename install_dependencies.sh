@@ -4,8 +4,23 @@
 git clone https://github.com/google-deepmind/graphcast.git
 
 # Initialize Conda in the script
-# Replace this with the path to your Conda installation if it's different
-source /opt/anaconda3/etc/profile.d/conda.sh
+# Get the current operating system
+OS=$(uname)
+
+# Define the universal user path
+USER_HOME_PATH=$(eval echo ~$USER)
+
+# Check if OS is macOS or Linux and source the appropriate conda.sh script
+if [[ "$OS" == "Darwin" ]]; then
+    # macOS
+    source "/opt/anaconda3/etc/profile.d/conda.sh"
+elif [[ "$OS" == "Linux" ]]; then
+    # Linux
+    source "$USER_HOME_PATH/anaconda3/etc/profile.d/conda.sh"
+else
+    echo "Unsupported operating system."
+fi
+
 
 
 # Create and activate a new conda environment
@@ -15,18 +30,31 @@ conda activate graphcast
 # Install Python requirements
 # Replace 'install' with the appropriate command for your setup script
 python graphcast/setup.py install
-conda install ipykernel
+yes | conda install ipykernel
 
-# multiline comment
+# GPU
+#pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
-# Clone dm-tree, build and install it
-git clone https://github.com/google-deepmind/tree.git
-cd tree
-python setup.py build
-python setup.py install
-cd ..
-#rm -rf tree
-#rm -rf dm_tree.egg-info
+
+
+
+# Check if OS is macOS or Linux and source the appropriate conda.sh script
+if [[ "$OS" == "Darwin" ]]; then
+    # macOS
+    # Clone dm-tree, build and install it
+    git clone https://github.com/google-deepmind/tree.git
+    cd tree
+    python setup.py build
+    python setup.py install
+    cd ..
+    rm -rf tree
+    rm -rf dm_tree.egg-info
+elif [[ "$OS" == "Linux" ]]; then
+    # Linux
+    pip install dm-tree
+else
+    echo "Unsupported operating system."
+fi
 
 # Create data directories
 mkdir -p data/params

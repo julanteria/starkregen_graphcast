@@ -35,6 +35,8 @@ import sys
 sys.path.append('graphcast')
 from graphcast import graphcast, checkpoint, normalization, autoregressive, casting, data_utils, rollout
 import jax
+#jax.config.update('jax_platform_name', 'gpu')
+print("JAX is using: ", jax.devices())
 import haiku as hk
 import numpy as np
 import functools
@@ -43,7 +45,7 @@ import functools
 
 src_diffs_stddev_by_level = "data/stats/diffs_stddev_by_level.nc"
 src_mean_by_level = "data/stats/mean_by_level.nc"
-src_stddev_by_level = "data/stats/stddev_by_level.nc"
+src_stddev_by_level = "data/stats/stddev_by_level.nc"s
 
 with open(src_diffs_stddev_by_level, "rb") as f:
     diffs_stddev_by_level = xarray.load_dataset(f).compute()
@@ -142,7 +144,7 @@ run_forward = hk.transform_with_state(run_forward)
 
 init_jitted = jax.jit(with_configs(run_forward.init))
 
-grads_fn_jitted = with_params(jax.jit(with_configs(grads_fn)))
+#grads_fn_jitted = with_params(jax.jit(with_configs(grads_fn)))
 run_forward_jitted = drop_state(with_params(jax.jit(with_configs(
     run_forward.apply))))
 
@@ -158,7 +160,8 @@ predictions = rollout.chunked_prediction(
     inputs=eval_inputs,
     targets_template=eval_targets * np.nan,
     forcings=eval_forcings)
-predictions
+print(predictions)
+
 # 10 min auf cpu
 # halle lan 51.5, lon 11.9
 
