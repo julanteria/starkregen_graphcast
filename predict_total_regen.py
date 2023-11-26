@@ -45,7 +45,7 @@ import functools
 
 src_diffs_stddev_by_level = "data/stats/diffs_stddev_by_level.nc"
 src_mean_by_level = "data/stats/mean_by_level.nc"
-src_stddev_by_level = "data/stats/stddev_by_level.nc"s
+src_stddev_by_level = "data/stats/stddev_by_level.nc"
 
 with open(src_diffs_stddev_by_level, "rb") as f:
     diffs_stddev_by_level = xarray.load_dataset(f).compute()
