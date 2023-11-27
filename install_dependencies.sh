@@ -10,13 +10,23 @@ OS=$(uname)
 # Define the universal user path
 USER_HOME_PATH=$(eval echo ~$USER)
 
-# Check if OS is macOS or Linux and source the appropriate conda.sh script
+# Check if OS is apple arm, intel or linux
 if [[ "$OS" == "Darwin" ]]; then
     # macOS
-    source "/opt/anaconda3/etc/profile.d/conda.sh"
+    # Check if the user is using an Apple Silicon processor
+    if [[ "$(uname -p)" == "arm" ]]; then
+        # Apple Silicon
+        # Set the path to the Apple Silicon miniforge
+        MINIFORGE_PATH="$USER_HOME_PATH/anaconda3/condabin/conda"
+    else
+        # Intel
+        # Set the path to the Intel miniforge
+        MINIFORGE_PATH="/opt/anaconda3/etc/profile.d/conda.sh"
+    fi
 elif [[ "$OS" == "Linux" ]]; then
     # Linux
-    source "$USER_HOME_PATH/anaconda3/etc/profile.d/conda.sh"
+    # Set the path to the Linux miniforge
+    MINIFORGE_PATH="$USER_HOME_PATH/miniforge3/etc/profile.d/conda.sh"
 else
     echo "Unsupported operating system."
 fi
