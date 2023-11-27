@@ -17,7 +17,7 @@ if [[ "$OS" == "Darwin" ]]; then
     if [[ "$(uname -p)" == "arm" ]]; then
         # Apple Silicon
         # Set the path to the Apple Silicon miniforge
-        MINIFORGE_PATH="$USER_HOME_PATH/anaconda3/condabin/conda"
+        MINIFORGE_PATH="$USER_HOME_PATH/anaconda3/etc/profile.d/conda.sh"
     else
         # Intel
         # Set the path to the Intel miniforge
@@ -26,7 +26,7 @@ if [[ "$OS" == "Darwin" ]]; then
 elif [[ "$OS" == "Linux" ]]; then
     # Linux
     # Set the path to the Linux miniforge
-    MINIFORGE_PATH="$USER_HOME_PATH/miniforge3/etc/profile.d/conda.sh"
+    MINIFORGE_PATH="$USER_HOME_PATH/anaconda3/etc/profile.d/conda.sh"
 else
     echo "Unsupported operating system."
 fi
