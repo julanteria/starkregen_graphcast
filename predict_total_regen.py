@@ -1,34 +1,28 @@
-# %%
-
-"""
-#code:
+"""# Clone graphcast and tree repositories
 ! git clone https://github.com/google-deepmind/graphcast.git
-
-# environment: python 3.11
-! conda env create -n graphcast python=3.11
-! conda activate graphcast && pip install -r graphcast/requirements.txt
-
-# buid dm-tree from source
-
 ! git clone https://github.com/google-deepmind/tree.git
+
+# Setup environment
+! conda env create -n graphcast python=3.11
+! conda activate graphcast
+! pip install -r graphcast/requirements.txt
+
+# Build dm-tree from source
 ! python dm-tree/setup.py build
 ! python dm-tree/setup.py install
 ! rm -rf dm-tree
 
-
-# data:
-#https://console.cloud.google.com/storage/browser/dm_graphcast;tab=objects?prefix=&forceOnObjectsSortingFiltering=false
-! mkdir data && mkdir data/params && mkdir data/stats && mkdir data/datasets
+# Data setup
+! mkdir -p data/params data/stats data/datasets
 ! pip install gsutil
 ! gsutil -m cp "gs://dm_graphcast/params/GraphCast - ERA5 1979-2017 - resolution 0.25 - pressure levels 37 - mesh 2to6 - precipitation input and output.npz" .
 ! gsutil -m cp "gs://dm_graphcast/dataset/source-era5_date-2022-01-01_res-0.25_levels-37_steps-01.nc" data/datasets/
-! gsutil -m cp "gs://dm_graphcast/stats/diffs_stddev_by_level.nc" "gs://dm_graphcast/stats/mean_by_level.nc" "gs://dm_graphcast/stats/stddev_by_level.nc"  data/stats
+! gsutil -m cp "gs://dm_graphcast/stats/diffs_stddev_by_level.nc" "gs://dm_graphcast/stats/mean_by_level.nc" "gs://dm_graphcast/stats/stddev_by_level.nc" data/stats
 ! mv "GraphCast - ERA5 1979-2017 - resolution 0.25 - pressure levels 37 - mesh 2to6 - precipitation input and output.npz" "data/params/GraphCast_ERA5_1979-2017_Resolution-0.25_PressureLevels-37_Mesh-2to6_PrecipitationInputOutput.npz"
-
 """
 
-# %%
 import dataclasses
+import os
 import xarray
 import matplotlib.pyplot as plt
 import sys
@@ -40,8 +34,16 @@ print("JAX is using: ", jax.devices())
 import haiku as hk
 import numpy as np
 import functools
+import time
 
-# %%
+# Set JAX to use CPU only
+os.environ['JAX_PLATFORM_NAME'] = 'cuda'
+
+sys.path.append('graphcast')
+
+# JAX configuration
+print("JAX is using: ", jax.devices())
+
 
 src_diffs_stddev_by_level = "data/stats/diffs_stddev_by_level.nc"
 src_mean_by_level = "data/stats/mean_by_level.nc"
@@ -54,10 +56,7 @@ with open(src_mean_by_level, "rb") as f:
 with open(src_stddev_by_level, "rb") as f:
     stddev_by_level = xarray.load_dataset(f).compute()
 
-
-
-# %%
-src = "data/params/GraphCast_ERA5_1979-2017_Resolution-0.25_PressureLevels-37_Mesh-2to6_PrecipitationInputOutput.npz"
+src = "/home/jul/Documents/git/starkregen_graphcast/data/params/params_GraphCast_operational - ERA5-HRES 1979-2021 - resolution 0.25 - pressure levels 13 - mesh 2to6 - precipitation output only.npz"
 with open(src, "rb",) as f:
     ckpt = checkpoint.load(f, graphcast.CheckPoint)
 
@@ -69,20 +68,20 @@ task_config = ckpt.task_config
 print("Model description:/n", ckpt.description, "/n")
 print("Model license:/n", ckpt.license, "/n")
 
-# %%
-example_batch_src = "data/datasets/source-era5_date-2022-01-01_res-0.25_levels-37_steps-01.nc"
+example_batch_src = "/home/jul/Documents/git/starkregen_graphcast/data/datasets/dataset_source-era5_date-2022-01-01_res-1.0_levels-13_steps-01.nc"
 with open(example_batch_src, "rb") as f:
     example_batch = xarray.load_dataset(f).compute()
+
+
 
 eval_steps = 1
 eval_inputs, eval_targets, eval_forcings = data_utils.extract_inputs_targets_forcings(
     example_batch, target_lead_times=slice("6h", f"{eval_steps*6}h"),
     **dataclasses.asdict(task_config))
 
-# %%
-#task_config.target_variables
 
-# %%
+
+
 def construct_wrapped_graphcast(
     model_config: graphcast.ModelConfig,
     task_config: graphcast.TaskConfig):
@@ -149,10 +148,25 @@ run_forward_jitted = drop_state(with_params(jax.jit(with_configs(
     run_forward.apply))))
 
 
-# %%
+
 print("Inputs:  ", eval_inputs.dims.mapping)
 print("Targets: ", eval_targets.dims.mapping)
 #print("Forcings:", eval_forcings.dims.mapping)
+
+
+# Example specific coordinates
+specific_lon = 12.0
+specific_lat = 51.5
+
+# Selecting the data for specific lon and lat in eval_inputs
+eval_inputs_specific = eval_inputs.sel(lon=specific_lon, lat=specific_lat, method='nearest')
+
+# Selecting the data for specific lon and lat in eval_targets
+eval_targets_specific = eval_targets.sel(lon=specific_lon, lat=specific_lat, method='nearest')
+
+# Selecting the data for specific lon and lat in eval_forcings
+eval_forcings_specific = eval_forcings.sel(lon=specific_lon, lat=specific_lat, method='nearest')
+
 
 predictions = rollout.chunked_prediction(
     run_forward_jitted,
@@ -162,10 +176,9 @@ predictions = rollout.chunked_prediction(
     forcings=eval_forcings)
 print(predictions)
 
-# 10 min auf cpu
-# halle lan 51.5, lon 11.9
 
-# %%
+start = time.time()
+start = str(str(start)[:10])
 
-
-
+# For NetCDF format
+predictions.to_netcdf(f'{start}_predicted_dataset_medium_model.nc')
