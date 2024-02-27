@@ -56,7 +56,7 @@ with open(src_mean_by_level, "rb") as f:
 with open(src_stddev_by_level, "rb") as f:
     stddev_by_level = xarray.load_dataset(f).compute()
 
-src = "/home/jul/Documents/git/starkregen_graphcast/data/params/params_GraphCast_operational - ERA5-HRES 1979-2021 - resolution 0.25 - pressure levels 13 - mesh 2to6 - precipitation output only.npz"
+src = "data/params/params_GraphCast_small - ERA5 1979-2015 - resolution 1.0 - pressure levels 13 - mesh 2to5 - precipitation input and output.npz"
 with open(src, "rb",) as f:
     ckpt = checkpoint.load(f, graphcast.CheckPoint)
 
@@ -68,11 +68,15 @@ task_config = ckpt.task_config
 print("Model description:/n", ckpt.description, "/n")
 print("Model license:/n", ckpt.license, "/n")
 
-example_batch_src = "/home/jul/Documents/git/starkregen_graphcast/data/datasets/dataset_source-era5_date-2022-01-01_res-1.0_levels-13_steps-01.nc"
-with open(example_batch_src, "rb") as f:
+#example_batch_src = "data/datasets/dataset_source-era5_date-2022-01-01_res-1.0_levels-13_steps-01.nc"
+my_own_src = "data/copernicus_data/input_pressure_and_no_pressure_combined_24_02.nc"
+with open(my_own_src, "rb") as f:
     example_batch = xarray.load_dataset(f).compute()
 
-
+print("Input data loaded")
+print("Example batch: ", example_batch)
+print()
+print()
 
 eval_steps = 1
 eval_inputs, eval_targets, eval_forcings = data_utils.extract_inputs_targets_forcings(
@@ -148,10 +152,12 @@ run_forward_jitted = drop_state(with_params(jax.jit(with_configs(
     run_forward.apply))))
 
 
-
+print("Model loaded")
 print("Inputs:  ", eval_inputs.dims.mapping)
 print("Targets: ", eval_targets.dims.mapping)
 #print("Forcings:", eval_forcings.dims.mapping)
+print()
+print()
 
 
 # Example specific coordinates
@@ -167,18 +173,24 @@ eval_targets_specific = eval_targets.sel(lon=specific_lon, lat=specific_lat, met
 # Selecting the data for specific lon and lat in eval_forcings
 eval_forcings_specific = eval_forcings.sel(lon=specific_lon, lat=specific_lat, method='nearest')
 
-
+start = time.time()
 predictions = rollout.chunked_prediction(
     run_forward_jitted,
     rng=jax.random.PRNGKey(0),
     inputs=eval_inputs,
     targets_template=eval_targets * np.nan,
     forcings=eval_forcings)
+
+end = time.time()
+
+print("Predction finished in: ", end-start, " s   or  ", (end-start)/60, " min")
+print("Predictions: ")
 print(predictions)
 
 
-start = time.time()
+
+
 start = str(str(start)[:10])
 
 # For NetCDF format
-predictions.to_netcdf(f'{start}_predicted_dataset_medium_model.nc')
+predictions.to_netcdf(f'{start}_predicted_dataset_small_model_input_pressure_and_no_pressure_combined_24_02.nc.nc')
